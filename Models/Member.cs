@@ -1,24 +1,19 @@
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations;
 
 namespace LibraryAPI.Models
 {
-    public class Member
+    public class Member : IdentityUser
     {
-        public int Id { get; set; }
-
+        // Id, Email, UserName, PasswordHash — ye sab IdentityUser se already aa rahe hain
         [Required]
-        public string FullName { get; set; }
+        public string FullName { get; set; } = string.Empty;
 
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; }
+        public string? Phone { get; set; }  // ? = optional field
 
-        public string Phone { get; set; }
+        public DateTime JoinDate { get; set; } = DateTime.UtcNow;  // UtcNow better hai
 
-        public DateTime JoinDate { get; set; } = DateTime.Now;
-
-        // One to Many
+        // Navigation Property
         public List<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
     }
 }

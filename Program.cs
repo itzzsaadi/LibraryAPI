@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using LibraryAPI.Data;
 using LibraryAPI.Services;
+using LibraryAPI.Models;
 
 DotNetEnv.Env.Load();
 
@@ -21,7 +22,7 @@ builder.Services.AddDbContext<LibraryDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 // Identity
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+builder.Services.AddIdentity<Member, IdentityRole>()
     .AddEntityFrameworkStores<LibraryDbContext>()
     .AddDefaultTokenProviders();
 
