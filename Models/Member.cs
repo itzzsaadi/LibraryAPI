@@ -12,7 +12,9 @@ namespace LibraryAPI.Models
         public string? Phone { get; set; }  // ? = optional field
 
         public DateTime JoinDate { get; set; } = DateTime.UtcNow;  // UtcNow better hai
-
+                                                                   // Email Verification
+        public string? EmailOtp { get; set; }
+        public DateTime? OtpExpiry { get; set; }
         // Navigation Property
         public List<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
     }
