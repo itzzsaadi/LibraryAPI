@@ -57,7 +57,13 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(jwtSecret))
     };
-});
+})
+.AddGoogle(options =>
+{
+    options.ClientId = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID")!;
+    options.ClientSecret = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_SECRET")!;
+    options.CallbackPath = "/api/auth/google-callback";
+}); ;
 
 builder.Services.AddControllers();
 builder.Services.AddScoped<JwtService>();

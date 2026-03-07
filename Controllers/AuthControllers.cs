@@ -367,5 +367,70 @@ namespace LibraryAPI.Controllers
                 refreshToken = newRefreshToken
             });
         }
+        // POST /api/auth/google
+        [HttpPost("google")]
+        public async Task<IActionResult> GoogleAuth([FromBody] GoogleAuthDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                // 1. Google Token verify karo
+                var settings = new Google.Apis.Auth.GoogleJsonWebSignature.ValidationSettings
+                {
+                    Audience = new[] { Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID") }
+                };
+
+                var payload = await Google.Apis.Auth.GoogleJsonWebSignature.ValidateAsync(dto.IdToken, settings);
+
+                // 2. User dhundo ya banao
+                var user = await _userManager.FindByEmailAsync(payload.Email);
+
+                if (user == null)
+                {
+                    user = new Member
+                    {
+                        UserName = payload.Email,
+                        Email = payload.Email,
+                        FullName = payload.Name,
+                        EmailConfirmed = true, // Google ne verify kiya hai
+                        JoinDate = DateTime.UtcNow
+                    };
+
+                    var createResult = await _userManager.CreateAsync(user);
+                    if (!createResult.Succeeded)
+                        return BadRequest(createResult.Errors);
+
+                    await _userManager.AddToRoleAsync(user, "Member");
+                }
+
+                // 3. JWT banao
+                var roles = await _userManager.GetRolesAsync(user);
+                var token = _jwtService.GenerateToken(user, roles);
+
+                var refreshToken = _jwtService.GenerateRefreshToken();
+                user.RefreshToken = refreshToken;
+                user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+                await _userManager.UpdateAsync(user);
+
+                return Ok(new
+                {
+                    accessToken = token,
+                    refreshToken,
+                    user = new
+                    {
+                        user.Id,
+                        user.FullName,
+                        user.Email,
+                        roles
+                    }
+                });
+            }
+            catch (Exception)
+            {
+                return Unauthorized(new { message = "Invalid Google token" });
+            }
+        }
     }
 }

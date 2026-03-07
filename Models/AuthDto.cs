@@ -104,4 +104,10 @@ namespace LibraryAPI.Models
         [Required(ErrorMessage = "Refresh token is required")]
         public string RefreshToken { get; set; } = string.Empty;
     }
+    // Google Authentication DTO
+    public class GoogleAuthDto
+    {
+        [Required(ErrorMessage = "Google token is required")]
+        public string IdToken { get; set; } = string.Empty;
+    }
 }
