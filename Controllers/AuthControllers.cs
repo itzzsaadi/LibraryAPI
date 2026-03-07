@@ -4,6 +4,8 @@ using LibraryAPI.Models;
 using LibraryAPI.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Google;
 
 namespace LibraryAPI.Controllers
 {
@@ -131,14 +133,39 @@ namespace LibraryAPI.Controllers
             if (user == null)
                 return Unauthorized(new { message = "Invalid email or password" });
 
+            // ✅ Account lockout check (Pehle se lock toh nahi?)
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                var lockoutEnd = user.LockoutEnd!.Value.UtcDateTime;
+                var remainingMinutes = (int)(lockoutEnd - DateTime.UtcNow).TotalMinutes + 1;
+                return Unauthorized(new { message = $"Account locked. Try again in {remainingMinutes} minutes." });
+            }
+
             // 3. Password sahi hai?
             var isPasswordCorrect = await _userManager.CheckPasswordAsync(user, dto.Password);
+
             if (!isPasswordCorrect)
-                return Unauthorized(new { message = "Invalid email or password" });
+            {
+                // Failed attempt record karo (Database mein counter barhayega)
+                await _userManager.AccessFailedAsync(user);
+
+                // Check karo kya is attempt ke baad account abhi lock hua?
+                if (await _userManager.IsLockedOutAsync(user))
+                {
+                    return Unauthorized(new { message = "Too many failed attempts. Account locked for 15 minutes." });
+                }
+
+                // Baki bache huye attempts calculate karke user ko batao
+                var attemptsLeft = 5 - await _userManager.GetAccessFailedCountAsync(user);
+                return Unauthorized(new { message = $"Invalid email or password. {attemptsLeft} attempts remaining." });
+            }
 
             // 4. Email verified hai?
             if (!user.EmailConfirmed)
                 return Unauthorized(new { message = "Please verify your email before logging in." });
+
+            // ✅ Login successful — Failed attempts reset karo (Taki next time 0 se shuru ho)
+            await _userManager.ResetAccessFailedCountAsync(user);
 
             // 5. User ka role lo
             var roles = await _userManager.GetRolesAsync(user);

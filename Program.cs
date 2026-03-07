@@ -22,7 +22,15 @@ builder.Services.AddDbContext<LibraryDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 // Identity
-builder.Services.AddIdentity<Member, IdentityRole>()
+builder.Services.AddIdentity<Member, IdentityRole>(
+    options =>
+    //Account lockout setting
+    {
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    }
+)
     .AddEntityFrameworkStores<LibraryDbContext>()
     .AddDefaultTokenProviders();
 
