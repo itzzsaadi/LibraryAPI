@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using LibraryAPI.Models;
 using LibraryAPI.Services;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace LibraryAPI.Controllers
 {
@@ -144,9 +146,16 @@ namespace LibraryAPI.Controllers
             // 6. JWT Token banao
             var token = _jwtService.GenerateToken(user, roles);
 
+            // 7. Refresh Token banao aur save karo database mein
+            var refreshToken = _jwtService.GenerateRefreshToken();
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7); // Refresh token 7 din ke liye valid rahega
+            await _userManager.UpdateAsync(user);
+
             return Ok(new
             {
-                token,
+                accessToken = token,
+                refreshToken,
                 user = new
                 {
                     user.Id,
@@ -187,6 +196,149 @@ namespace LibraryAPI.Controllers
             await _userManager.UpdateAsync(user);
 
             return Ok(new { message = "Email verified successfully. You can now login." });
+        }
+        // POST /api/auth/forgot-password
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+
+            // Security! — User mile ya na mile, same response bhejo
+            // Warna hacker ko pata chalega ke email exist karta hai ya nahi
+            if (user == null)
+                return Ok(new { message = "If this email exists, a reset code has been sent." });
+
+            // Rate limiting — OTP abhi valid hai?
+            if (user.PasswordResetOtpExpiry.HasValue && user.PasswordResetOtpExpiry > DateTime.UtcNow)
+            {
+                var remainingSeconds = (int)(user.PasswordResetOtpExpiry.Value - DateTime.UtcNow).TotalSeconds;
+                return BadRequest(new { message = $"Please wait {remainingSeconds} seconds before requesting a new code." });
+            }
+
+            // OTP generate karo
+            var otp = new Random().Next(100000, 999999).ToString();
+            user.PasswordResetOtp = otp;
+            user.PasswordResetOtpExpiry = DateTime.UtcNow.AddMinutes(10);
+            await _userManager.UpdateAsync(user);
+
+            // Email bhejo
+            await _emailService.SendEmailAsync(
+                user.Email!,
+                "Password Reset Code - LibraryAPI",
+                $@"
+        <h2>Password Reset Request</h2>
+        <p>Your password reset code is:</p>
+        <h1 style='color: #DC2626; letter-spacing: 8px;'>{otp}</h1>
+        <p>This code will expire in <strong>10 minutes</strong>.</p>
+        <p>If you did not request this, please ignore this email.</p>
+        "
+            );
+
+            return Ok(new { message = "If this email exists, a reset code has been sent." });
+        }
+
+        // POST /api/auth/reset-password
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // 1. User dhundo
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            // 2. OTP sahi hai?
+            if (user.PasswordResetOtp != dto.Otp)
+                return BadRequest(new { message = "Invalid reset code" });
+
+            // 3. OTP expire toh nahi hua?
+            if (user.PasswordResetOtpExpiry < DateTime.UtcNow)
+                return BadRequest(new { message = "Reset code has expired. Please request a new one." });
+
+            // 4. Password reset karo
+            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, resetToken, dto.NewPassword);
+
+            if (!result.Succeeded)
+                return BadRequest(result.Errors);
+
+            // 5. OTP delete karo
+            user.PasswordResetOtp = null;
+            user.PasswordResetOtpExpiry = null;
+            await _userManager.UpdateAsync(user);
+
+            return Ok(new { message = "Password reset successful. You can now login." });
+        }
+        // POST /api/auth/change-password
+        [Authorize]  // ✅ Sirf logged-in user access kar sakta hai
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // 1. Token se current user ka Id lo
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(userId!);
+
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            // 2. Purana password sahi hai?
+            var isCorrect = await _userManager.CheckPasswordAsync(user, dto.CurrentPassword);
+            if (!isCorrect)
+                return BadRequest(new { message = "Current password is incorrect" });
+
+            // 3. Naya password purane jaisa toh nahi?
+            if (dto.CurrentPassword == dto.NewPassword)
+                return BadRequest(new { message = "New password must be different from current password" });
+
+            // 4. Password change karo
+            var result = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
+
+            if (!result.Succeeded)
+                return BadRequest(result.Errors);
+
+            return Ok(new { message = "Password changed successfully" });
+        }
+        // POST /api/auth/refresh-token
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // 1. Database mein Refresh Token dhundo
+            var user = _userManager.Users
+                .FirstOrDefault(u => u.RefreshToken == dto.RefreshToken);
+
+            if (user == null)
+                return Unauthorized(new { message = "Invalid refresh token" });
+
+            // 2. Expire toh nahi hua?
+            if (user.RefreshTokenExpiry < DateTime.UtcNow)
+                return Unauthorized(new { message = "Refresh token has expired. Please login again." });
+
+            // 3. Naya Access Token banao
+            var roles = await _userManager.GetRolesAsync(user);
+            var newAccessToken = _jwtService.GenerateToken(user, roles);
+
+            // 4. Naya Refresh Token banao — Rotation!
+            var newRefreshToken = _jwtService.GenerateRefreshToken();
+            user.RefreshToken = newRefreshToken;
+            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+            await _userManager.UpdateAsync(user);
+
+            return Ok(new
+            {
+                accessToken = newAccessToken,
+                refreshToken = newRefreshToken
+            });
         }
     }
 }

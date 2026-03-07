@@ -3,6 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Security.Cryptography;
 
 namespace LibraryAPI.Services
 {
@@ -47,6 +48,14 @@ namespace LibraryAPI.Services
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+        // Refresh Token — Random secure string
+        public string GenerateRefreshToken()
+        {
+            var randomBytes = new byte[64];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomBytes);
+            return Convert.ToBase64String(randomBytes);
         }
     }
 }
