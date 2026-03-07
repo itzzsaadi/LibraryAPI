@@ -15,6 +15,12 @@ namespace LibraryAPI.Models
                                                                    // Email Verification
         public string? EmailOtp { get; set; }
         public DateTime? OtpExpiry { get; set; }
+        // Password Reset
+        public string? PasswordResetOtp { get; set; }
+        public DateTime? PasswordResetOtpExpiry { get; set; }
+        // Refresh Token
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiry { get; set; }
         // Navigation Property
         public List<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
     }
