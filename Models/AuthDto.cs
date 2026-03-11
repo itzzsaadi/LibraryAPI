@@ -22,7 +22,7 @@ namespace LibraryAPI.Models
         [Required(ErrorMessage = "Please confirm your password")]
         [Compare("Password", ErrorMessage = "Passwords do not match")]
         public string ConfirmPassword { get; set; } = string.Empty;
-
+        // Optional phone number
         [Phone(ErrorMessage = "Invalid phone number")]
         public string? Phone { get; set; }
     }

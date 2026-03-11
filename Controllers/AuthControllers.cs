@@ -59,7 +59,7 @@ namespace LibraryAPI.Controllers
             // 6. OTP generate karo
             var otp = new Random().Next(100000, 999999).ToString();
             user.EmailOtp = otp;
-            user.OtpExpiry = DateTime.UtcNow.AddMinutes(10); // OTP 10 minutes ke liye valid rahega
+            user.OtpExpiry = DateTime.UtcNow.AddMinutes(1); // OTP 1 minutes ke liye valid rahega
             await _userManager.UpdateAsync(user);
 
             //8. OTP email bhejo
@@ -102,7 +102,7 @@ namespace LibraryAPI.Controllers
             // 4. Naya OTP generate karo
             var otp = new Random().Next(100000, 999999).ToString();
             user.EmailOtp = otp;
-            user.OtpExpiry = DateTime.UtcNow.AddMinutes(10);
+            user.OtpExpiry = DateTime.UtcNow.AddMinutes(1);
             await _userManager.UpdateAsync(user);
 
             // 5. Email bhejo
@@ -113,7 +113,7 @@ namespace LibraryAPI.Controllers
         <h2>New Verification Code</h2>
         <p>Your new verification code is:</p>
         <h1 style='color: #4F46E5; letter-spacing: 8px;'>{otp}</h1>
-        <p>This code will expire in <strong>10 minutes</strong>.</p>
+        <p>This code will expire in <strong>1 minute</strong>.</p>
         "
             );
 
@@ -248,7 +248,7 @@ namespace LibraryAPI.Controllers
             // OTP generate karo
             var otp = new Random().Next(100000, 999999).ToString();
             user.PasswordResetOtp = otp;
-            user.PasswordResetOtpExpiry = DateTime.UtcNow.AddMinutes(10);
+            user.PasswordResetOtpExpiry = DateTime.UtcNow.AddMinutes(1);
             await _userManager.UpdateAsync(user);
 
             // Email bhejo
@@ -259,7 +259,7 @@ namespace LibraryAPI.Controllers
         <h2>Password Reset Request</h2>
         <p>Your password reset code is:</p>
         <h1 style='color: #DC2626; letter-spacing: 8px;'>{otp}</h1>
-        <p>This code will expire in <strong>10 minutes</strong>.</p>
+        <p>This code will expire in <strong>1 minute</strong>.</p>
         <p>If you did not request this, please ignore this email.</p>
         "
             );
