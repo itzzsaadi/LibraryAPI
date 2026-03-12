@@ -193,5 +193,57 @@ namespace LibraryAPI.Controllers
 
             return Ok(new { message = "Profile updated successfully" });
         }
+        // Profile Update Logic
+        // PUT /api/member/profile/photo
+        [Authorize]
+        [HttpPut("profile/photo")]
+        public async Task<IActionResult> UpdateProfilePhoto(IFormFile photo)
+        {
+            // 1. Current user dhundo
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var member = await _userManager.FindByIdAsync(userId);
+            if (member == null) return Unauthorized();
+
+            // 2. File validation
+            if (photo == null || photo.Length == 0)
+                return BadRequest(new { message = "Photo required hai" });
+
+            var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+            if (!allowedTypes.Contains(photo.ContentType))
+                return BadRequest(new { message = "Sirf JPG, PNG, WEBP allowed hai" });
+
+            if (photo.Length > 2 * 1024 * 1024) // 2MB limit
+                return BadRequest(new { message = "Photo 2MB se choti honi chahiye" });
+
+            // 3. Purani photo delete karo
+            if (!string.IsNullOrEmpty(member.ProfilePhotoPath))
+            {
+                var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", member.ProfilePhotoPath);
+                if (System.IO.File.Exists(oldPath))
+                    System.IO.File.Delete(oldPath);
+            }
+
+            // 4. Nai photo save karo
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profiles");
+            Directory.CreateDirectory(uploadsFolder); // agar folder nahi hai toh banao
+
+            var fileName = $"{userId}_{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await photo.CopyToAsync(stream);
+            }
+
+            // 5. DB update karo
+            member.ProfilePhotoPath = $"uploads/profiles/{fileName}";
+            await _userManager.UpdateAsync(member);
+
+            return Ok(new
+            {
+                message = "Photo update ho gayi!",
+                photoUrl = $"{Request.Scheme}://{Request.Host}/{member.ProfilePhotoPath}"
+            });
+        }
     }
 }

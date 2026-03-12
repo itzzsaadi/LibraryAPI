@@ -418,6 +418,7 @@ namespace LibraryAPI.Controllers
                 {
                     accessToken = token,
                     refreshToken,
+                    isGoogleUser = true,
                     user = new
                     {
                         user.Id,

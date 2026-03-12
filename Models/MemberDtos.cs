@@ -49,6 +49,7 @@ namespace LibraryAPI.Models
 
         [Phone(ErrorMessage = "Invalid phone number")]
         public string? Phone { get; set; }
+        public string? ProfilePhotoPath { get; set; }
     }
 
     // Response DTO

@@ -34,5 +34,7 @@ namespace LibraryAPI.Models
         
         // Navigation Property
         public List<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
+        // profile photo
+        public string? ProfilePhotoPath { get; set; }
     }
 }
