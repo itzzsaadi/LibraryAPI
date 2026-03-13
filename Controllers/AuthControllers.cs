@@ -16,7 +16,6 @@ namespace LibraryAPI.Controllers
         private readonly UserManager<Member> _userManager;
         private readonly JwtService _jwtService;
         private readonly EmailService _emailService;
-
         public AuthController(UserManager<Member> userManager, JwtService jwtService, EmailService emailService)
         {
             _userManager = userManager;
