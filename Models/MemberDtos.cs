@@ -65,6 +65,7 @@ namespace LibraryAPI.Models
         public DateTime MembershipExpiryDate { get; set; }
         public int MaxBooksAllowed { get; set; }
         public int CurrentBooksCount { get; set; }
+        public string? ProfilePhotoPath { get; set; }
     }
     public class UpdateStatusDto
     {

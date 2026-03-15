@@ -169,7 +169,8 @@ namespace LibraryAPI.Controllers
                 Status = member.Status,
                 MembershipExpiryDate = member.MembershipExpiryDate,
                 MaxBooksAllowed = member.MaxBooksAllowed,
-                CurrentBooksCount = member.CurrentBooksCount
+                CurrentBooksCount = member.CurrentBooksCount,
+                ProfilePhotoPath = member.ProfilePhotoPath
             });
         }
 
